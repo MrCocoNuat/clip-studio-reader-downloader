@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Clip Studio Reader Downloader
 // @namespace    http://tampermonkey.net/
-// @version      1.1
+// @version      1.2
 // @description  Download books from the browser version of Clip Studio Reader
 // @author       mrcoconuat
 // @updateURL    https://raw.githubusercontent.com/MrCocoNuat/clip-studio-reader-downloader/main/clip-studio-reader-downloader.js
