@@ -4,6 +4,9 @@
 // @version      1.0
 // @description  Download books from the browser version of Clip Studio Reader
 // @author       mrcoconuat
+// @updateURL    https://raw.githubusercontent.com/MrCocoNuat/clip-studio-reader-downloader/main/clip-studio-reader-downloader.js
+// @downloadURL  https://raw.githubusercontent.com/MrCocoNuat/clip-studio-reader-downloader/main/clip-studio-reader-downloader.js
+// @supportURL   https://github.com/MrCocoNuat/clip-studio-reader-downloader/issues
 // @match        https://mbj-bs.pf.mobilebook.jp/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=mobilebook.jp
 // @grant        none
