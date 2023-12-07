@@ -9,7 +9,7 @@ You must have a userscript browser extension installed (any will do):
 - [Violentmonkey](https://violentmonkey.github.io/)
   
 Once that is done, simply...
-- [Download from GitHub](https://github.com/MrCocoNuat/clip-studio-reader-downloader/raw/main/clip-studio-reader-downloader.js)
+- [Install from GreasyFork](https://github.com/MrCocoNuat/clip-studio-reader-downloader/raw/main/clip-studio-reader-downloader.js)](https://greasyfork.org/en/scripts/481576-clip-studio-reader-downloader)
 
 ## How to Use
 1. Open a book in Clip Studio Reader (the URL should match https://mbj-bs.pf.mobilebook.jp/*)
