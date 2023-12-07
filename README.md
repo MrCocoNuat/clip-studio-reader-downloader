@@ -1,5 +1,5 @@
 # clip-studio-reader-downloader
-Tampermonkey userscript to download books from the browser version of Clip Studio Reader as a zip file
+Tampermonkey userscript to download books as zip files from the browser version of Clip Studio Reader, the most popular e-book reader for manga and other Japanese media.
 
 ## Install this script
 
