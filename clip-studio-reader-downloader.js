@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Clip Studio Reader Downloader
 // @namespace    http://tampermonkey.net/
-// @version      1.0
+// @version      1.1
 // @description  Download books from the browser version of Clip Studio Reader
 // @author       mrcoconuat
 // @updateURL    https://raw.githubusercontent.com/MrCocoNuat/clip-studio-reader-downloader/main/clip-studio-reader-downloader.js
@@ -9,6 +9,7 @@
 // @supportURL   https://github.com/MrCocoNuat/clip-studio-reader-downloader/issues
 // @match        https://mbj-bs.pf.mobilebook.jp/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=mobilebook.jp
+// @license      MIT
 // @grant        none
 // ==/UserScript==
 
@@ -197,8 +198,8 @@ async function generateZip() {
         }
 
         flipPage(1);
-        await sleep(100);
         await waitForPageLoad();
+        await sleep(100);
     }
     return jsZip;
 }
@@ -242,7 +243,7 @@ function checkPageLoad(changes, observer) {
     if(document.querySelector('#spread_a')) {
         observer.disconnect();
         log("==== Clip Studio Reader Downloader ====");
-        // STOPSHIP self-promotion
+        log("https://github.com/MrCocoNuat/clip-studio-reader-downloader");
         log("waiting 3 seconds for reader to load");
         setTimeout(async () => {
 
