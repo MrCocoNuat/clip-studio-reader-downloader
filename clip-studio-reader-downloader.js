@@ -198,8 +198,9 @@ async function generateZip() {
         }
 
         flipPage(1);
+        await sleep(150);
         await waitForPageLoad();
-        await sleep(100);
+        await sleep(150);
     }
     return jsZip;
 }
