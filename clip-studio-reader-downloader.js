@@ -4,16 +4,67 @@
 // @version      1.2
 // @description  Download books from the browser version of Clip Studio Reader
 // @author       mrcoconuat
-// @updateURL    https://raw.githubusercontent.com/MrCocoNuat/clip-studio-reader-downloader/main/clip-studio-reader-downloader.js
-// @downloadURL  https://raw.githubusercontent.com/MrCocoNuat/clip-studio-reader-downloader/main/clip-studio-reader-downloader.js
 // @supportURL   https://github.com/MrCocoNuat/clip-studio-reader-downloader/issues
-// @match        https://mbj-bs.pf.mobilebook.jp/*
+// @match        *://*/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=mobilebook.jp
 // @license      MIT
 // @grant        none
+// @downloadURL https://update.greasyfork.org/scripts/481576/Clip%20Studio%20Reader%20Downloader.user.js
+// @updateURL https://update.greasyfork.org/scripts/481576/Clip%20Studio%20Reader%20Downloader.meta.js
 // ==/UserScript==
 
 'use strict';
+
+// Site-blind Clip Studio Reader integration support:
+//------------------------------
+
+const ELEMENT = {
+  SCREEN_CONTROLLER:0, // used to flip pages
+  CURRENT_PAGE_COUNTER:1, // duh
+  TOTAL_PAGE_COUNTER:2, // duh
+  LOADER_SPINNER:3, // used to detect if the reader is loading a page
+  MENU:4, // used to detect if the menu must be raised since it contains the page scroller
+  PAGE_SPREAD:5, // contains the actual pages
+  DOWNLOAD_BUTTON_PARENT:6, // download button is injected into
+  PAGE_SLIDER: 7 // duh
+}
+
+// Data distribution for site-specific integrations:
+//------------------------------
+
+const siteElementIds = {
+  "mbj-bs.pf.mobilebook.jp": {
+    [ELEMENT.SCREEN_CONTROLLER]: "screen_surface",
+    [ELEMENT.CURRENT_PAGE_COUNTER]: "paging_slider_nombre_current",
+    [ELEMENT.TOTAL_PAGE_COUNTER]: "paging_slider_nombre_total",
+    [ELEMENT.LOADER_SPINNER]: "loading_spinner_layer",
+    [ELEMENT.MENU]: "menu_layer",
+    [ELEMENT.PAGE_SPREAD]: "spread_a",
+    [ELEMENT.DOWNLOAD_BUTTON_PARENT]: "footer_down",
+    [ELEMENT.PAGE_SLIDER]: "paging_slider",
+  },
+  "api.distribution.mediadotech.com": {
+    [ELEMENT.SCREEN_CONTROLLER]: "screen_control_pad",
+    [ELEMENT.CURRENT_PAGE_COUNTER]: "menu_nombre_current",
+    [ELEMENT.TOTAL_PAGE_COUNTER]: "menu_nombre_total",
+    [ELEMENT.LOADER_SPINNER]: "screen_loading_spinner_layer",
+    [ELEMENT.MENU]: "menu_container",
+    [ELEMENT.PAGE_SPREAD]: "screen_layer"
+  }
+}
+// sometimes the necessary element does not have an id, which sucks
+const siteElementClasses = {
+  "api.distribution.mediadotech.com": {
+    [ELEMENT.DOWNLOAD_BUTTON_PARENT]: "menu-item-block",
+  }
+}
+
+const getCSRElement = (elementEnum) => {
+  return document.getElementById(siteElementIds[window.location.hostname][elementEnum])
+    ?? document.getElementsByClassName(siteElementClasses[window.location.hostname][elementEnum])[0];
+}
+
+
 
 init();
 
@@ -113,7 +164,7 @@ function dataUrlToData(base64Url){
 
 // positive flips forward (increase page number), negative flips backwards (decrease page number), 0 is to open menu
 function flipPage(direction) {
-    const screen = document.getElementById("screen_surface");
+    const screen = getCSRElement(ELEMENT.SCREEN_CONTROLLER);
     // click on the left, middle, or right of the screen depending on arg
     const x = (-direction + 1) * viewportX()/2;
     screen.dispatchEvent(new PointerEvent("pointerdown", {buttons:1, clientX:x, clientY:100, bubbles: true}));
@@ -127,24 +178,32 @@ async function waitForPageLoad(){
 }
 
 function currentPage() {
-    return +document.getElementById("paging_slider_nombre_current").textContent;
+    return +getCSRElement(ELEMENT.CURRENT_PAGE_COUNTER).textContent;
 }
 
 function totalPageCount() {
-    return +document.getElementById("paging_slider_nombre_total").textContent;
+    return +getCSRElement(ELEMENT.TOTAL_PAGE_COUNTER).textContent;
 }
 
 function isLoadingPage() {
-    return !!document.querySelector("#loading_spinner_layer.onstage");
+    return getCSRElement(ELEMENT.LOADER_SPINNER).classList.contains("onstage");
 }
 
 function isMenuOpen(){
-    return document.getElementById("menu_layer").style.display !== "none";
+    return getCSRElement(ELEMENT.MENU).style.display !== "none" && getCSRElement(ELEMENT.MENU).classList.contains("onstage");
 }
 
 
 async function flipToFirstPage(){
-    const slider = document.getElementById("paging_slider");
+    const slider = getCSRElement(ELEMENT.PAGE_SLIDER);
+    if (slider === undefined && currentPage() !== 1){
+      throw Error("This reader's automatic page slider is not supported, please move to page 1 manually and click the download button again");
+    }
+    if (currentPage() === 1){
+      log(`already on first page`);
+      return;
+    }
+
     log(`flipping to first page`);
 
     if (!isMenuOpen()){
@@ -179,11 +238,11 @@ async function generateZip() {
     log("==== downloading pages: ====");
 
     while (true){
-        const element_spread = document.getElementById("spread_a");
+        const element_spread = getCSRElement(ELEMENT.PAGE_SPREAD);
         // Right to left means reverse the array
         for (const canvas of [...element_spread.children].toReversed()){
-            if (canvas.style.visibility === "hidden"){
-                log(`page before ${pageNumber} is a hidden page, skipping it`); //possibly the unseen half of a 1 page spread on 2 canvases.
+            if (canvas.style.visibility === "hidden" || canvas.style.display === "none"){
+                log(`page before ${pageNumber} is a hidden or junk page, skipping it`); //possibly the unseen half of a 1 page spread on 2 canvases.
                 totalPages--; // there is 1 less page than we thought - but we still want to preserve the page number's continuity. Decrement this instead
                 continue;
             }
@@ -205,6 +264,19 @@ async function generateZip() {
     return jsZip;
 }
 
+function injectErrorMessage(message){
+    if (document.getElementById("error-message") !== null){
+      document.getElementById("error-message").remove();
+    }
+
+    const parent = getCSRElement(ELEMENT.DOWNLOAD_BUTTON_PARENT);
+    const div = document.createElement("div");
+    div.id = "error-message";
+    div.style.color = "red";
+    parent.appendChild(div);
+    const text = document.createTextNode(message);
+    div.appendChild(text);
+}
 
 async function downloadBookAsZip(){
     if (!isMenuOpen()){
@@ -213,7 +285,13 @@ async function downloadBookAsZip(){
         await sleep(200);
     }
 
-    await flipToFirstPage();
+    try{
+      await flipToFirstPage();
+    } catch(exception){
+      injectErrorMessage(exception.message);
+      throw exception;
+    }
+
     const jsZip = await generateZip();
     log("generating zip file, rename it however you like - this script cannot figure out the book's name");
     await jsZip.generateAsync({type:"blob"}).then(blob => saveAs(blob, "Clip_Studio_Reader_Downloader_RENAME_ME.zip"));
@@ -221,11 +299,11 @@ async function downloadBookAsZip(){
 }
 
 function injectDownloadButton(){
-    const footer = document.getElementById("footer_down");
+    const parent = getCSRElement(ELEMENT.DOWNLOAD_BUTTON_PARENT);
     const div = document.createElement("div");
-    footer.appendChild(div);
+    parent.appendChild(div);
     div.id = "download-button";
-    div.className = "block block_left_2 button circle";
+    div.className = "block block_left_2 button circle button-flexible"; // style it to whatever a site wants lol
     div.style["margin-left"] = "0px";
     div.addEventListener("pointerdown", downloadBookAsZip);
     svgToPng(downloadSvg,(imgData)=>{
@@ -241,7 +319,7 @@ function injectDownloadButton(){
 // Thanks, goweon
 // https://stackoverflow.com/a/47406751
 function checkPageLoad(changes, observer) {
-    if(document.querySelector('#spread_a')) {
+    if(getCSRElement(ELEMENT.PAGE_SPREAD)) {
         observer.disconnect();
         log("==== Clip Studio Reader Downloader ====");
         log("https://github.com/MrCocoNuat/clip-studio-reader-downloader");
@@ -259,8 +337,16 @@ function checkPageLoad(changes, observer) {
     }
 }
 
+function isClipStudioReader(){
+  return !!siteElementIds[document.location.hostname];
+}
+
 function init() {
-    (new MutationObserver(checkPageLoad)).observe(document, {childList: true, subtree: true});
+    if(isClipStudioReader()){
+      (new MutationObserver(checkPageLoad)).observe(document, {childList: true, subtree: true});
+    } else {
+        log("No instance of Clip Studio Reader found on the current page");
+    }
 };
 
 // External Libraries (integrated as best as they can in a userscript)
