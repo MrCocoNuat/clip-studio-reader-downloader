@@ -21,7 +21,7 @@ Once that is done, simply...
 
 ## Site Support
 
-As mentioned, each site's integrated Clip Studio Reader is a little different, thus explicit support for each site is necessary. The current supported sites are:
+As mentioned, each site's integrated Clip Studio Reader is a little different. A user-driven support package submission system is under development, but until then explicit support for each site is necessary. The current supported sites are:
 
 | Reader site | Bookstore |
 |-|-|
