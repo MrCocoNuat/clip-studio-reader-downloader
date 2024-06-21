@@ -76,7 +76,6 @@ const getCSRElement = (elementEnum) => {
 }
 
 
-
 init();
 
 // SVG Handling
@@ -338,7 +337,7 @@ function checkPageLoad(changes, observer) {
         setTimeout(async () => {
 
             if (currentPage() === 0){ // a canary
-                log("ERR: the reader seems to have started incorrectly - do you need to reopen the book?");
+                log("ERR: the reader seems to have started incorrectly or the reader may have taken too long to load - do you need to reopen the book?");
                 return;
             }
 
