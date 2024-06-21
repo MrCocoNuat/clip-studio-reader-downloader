@@ -50,11 +50,22 @@ const siteElementIds = {
     [ELEMENT.LOADER_SPINNER]: "screen_loading_spinner_layer",
     [ELEMENT.MENU]: "menu_container",
     [ELEMENT.PAGE_SPREAD]: "screen_layer"
+  },
+  "comic-viewer.iowl.jp": {
+    [ELEMENT.SCREEN_CONTROLLER]: "screen_control_pad",
+    [ELEMENT.CURRENT_PAGE_COUNTER]: "menu_nombre_current",
+    [ELEMENT.TOTAL_PAGE_COUNTER]: "menu_nombre_total",
+    [ELEMENT.LOADER_SPINNER]: "screen_loading_spinner_layer",
+    [ELEMENT.MENU]: "menu_footer",
+    [ELEMENT.PAGE_SPREAD]: "screen_layer",
   }
 }
 // sometimes the necessary element does not have an id, which sucks
 const siteElementClasses = {
   "api.distribution.mediadotech.com": {
+    [ELEMENT.DOWNLOAD_BUTTON_PARENT]: "menu-item-block",
+  },
+  "comic-viewer.iowl.jp": {
     [ELEMENT.DOWNLOAD_BUTTON_PARENT]: "menu-item-block",
   }
 }
@@ -323,7 +334,7 @@ function checkPageLoad(changes, observer) {
         observer.disconnect();
         log("==== Clip Studio Reader Downloader ====");
         log("https://github.com/MrCocoNuat/clip-studio-reader-downloader");
-        log("waiting 3 seconds for reader to load");
+        log("waiting 5 seconds for reader to load");
         setTimeout(async () => {
 
             if (currentPage() === 0){ // a canary
@@ -333,7 +344,7 @@ function checkPageLoad(changes, observer) {
 
             injectDownloadButton();
             log("reader is loaded, download button injected");
-        }, 3000);
+        }, 5000);
     }
 }
 
