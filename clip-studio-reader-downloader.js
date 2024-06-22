@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Clip Studio Reader Downloader
 // @namespace    http://tampermonkey.net/
-// @version      1.4
+// @version      1.5
 // @description  Download books from the browser version of Clip Studio Reader
 // @author       mrcoconuat
 // @supportURL   https://github.com/MrCocoNuat/clip-studio-reader-downloader/issues
@@ -66,7 +66,7 @@ const siteElementClasses = {
     [ELEMENT.DOWNLOAD_BUTTON_PARENT]: "menu-item-block",
   },
   "comic-viewer.iowl.jp": {
-    [ELEMENT.DOWNLOAD_BUTTON_PARENT]: "menu-item-block",
+    [ELEMENT.DOWNLOAD_BUTTON_PARENT]: "menu-layout-block",
   }
 }
 
@@ -325,25 +325,33 @@ function injectDownloadButton(){
     });
 }
 
+function checkReaderLoad(observer, timeoutId){
+  if (currentPage() !== 0){
+    observer.disconnect();
+    // stop the 30 second timeout
+    clearTimeout(timeoutId);
+    injectDownloadButton();
+    log("reader is loaded, download button injected");
+  }
+}
+
 // Userscript to wait for page to load before executing code techniques?
 // Thanks, goweon
 // https://stackoverflow.com/a/47406751
-function checkPageLoad(changes, observer) {
+function checkPageLoad(observer) {
     if(getCSRElement(ELEMENT.PAGE_SPREAD)) {
         observer.disconnect();
         log("==== Clip Studio Reader Downloader ====");
         log("https://github.com/MrCocoNuat/clip-studio-reader-downloader");
-        log("waiting 5 seconds for reader to load");
-        setTimeout(async () => {
+        log("waiting up to 30 seconds for reader to load");
 
-            if (currentPage() === 0){ // a canary
-                log("ERR: the reader seems to have started incorrectly or the reader may have taken too long to load - do you need to reopen the book?");
-                return;
-            }
-
-            injectDownloadButton();
-            log("reader is loaded, download button injected");
-        }, 5000);
+        let readerObserver;
+        const timeoutId = setTimeout(async () => {
+            log("ERR: reader load timeout. the reader seems to have started incorrectly or the reader may have taken too long to load - do you need to reopen the book?");
+            readerObserver.disconnect();
+        }, 30000);
+        readerObserver = new MutationObserver((changes, innerObserver) => checkReaderLoad(innerObserver, timeoutId));
+        readerObserver.observe(getCSRElement(ELEMENT.CURRENT_PAGE_COUNTER), {childList: true, subtree: true});
     }
 }
 
@@ -353,7 +361,7 @@ function isClipStudioReader(){
 
 function init() {
     if(isClipStudioReader()){
-      (new MutationObserver(checkPageLoad)).observe(document, {childList: true, subtree: true});
+      (new MutationObserver((changes, observer) => checkPageLoad(observer))).observe(document, {childList: true, subtree: true});
     } else {
         log("No instance of Clip Studio Reader found on the current page");
     }
