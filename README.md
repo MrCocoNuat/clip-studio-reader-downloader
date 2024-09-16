@@ -13,11 +13,11 @@ Once that is done, simply...
 
 ## How to Use
 1. Open a book in Clip Studio Reader. The current supported sites are listed below, make sure the page open with the book you are downloading is on one of them.
-2. Click the cool-looking purple download button. You may have to click the center of the page to open the menu and find it - each site's integration of Clip Studio Reader is a little different in terms of UI.
-3. Sit back, each 100 pages takes approximately 1 minute to download
+2. Click the snazzy-looking purple download button.
+3. Sit back, each 100 pages can take approximately 1 minute to download if the downloader needs to render/unscramble every page individually
 4. Save your book, now as a zip file
    
-![image](https://github.com/MrCocoNuat/clip-studio-reader-downloader/assets/28863780/e8541293-31e2-49a3-ab62-c9b7efe80afd)
+![Download Button image](assets/ui-example.png)
 
 ## Site Support
 
@@ -28,6 +28,8 @@ As mentioned, each site's integrated Clip Studio Reader is a little different. A
 |https://api.distribution.mediadotech.com/|[Pixiv Comics](https://comic.pixiv.net/)|
 |https://mbj-bs.pf.mobilebook.jp/| [honto](https://honto.jp/)|
 |https://comic-viewer.iowl.jp/|[ComicFesta](https://comic.iowl.jp/)|
+|https://comic.pixiv.net/viewer/| [Pixiv Comics](https://comic.pixiv.net/)|
+
 
 If you want another site to be supported, feel free to open an issue here with the bookstore, reader site (where you actually read the book), and any other helpful details you can think of. Of course, if you have the techinical inclination, I am accepting PRs for site support too.
 
