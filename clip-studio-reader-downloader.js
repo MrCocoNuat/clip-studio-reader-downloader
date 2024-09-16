@@ -7,7 +7,7 @@
 // @supportURL   https://github.com/MrCocoNuat/clip-studio-reader-downloader/issues
 // @match        *://*/*
 // @require      https://unpkg.com/jszip@3.10.1/dist/jszip.js
-// @require      https://www.unpkg.com/file-saver@2.0.5/dist/FileSaver.js
+// @require      https://unpkg.com/file-saver@2.0.5/dist/FileSaver.js
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=mobilebook.jp
 // @license      MIT
 // @grant        none
