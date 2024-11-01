@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Clip Studio Reader Downloader
 // @namespace    http://tampermonkey.net/
-// @version      1.8
+// @version      1.9
 // @description  Download books from the browser version of Clip Studio Reader
 // @author       mrcoconuat
 // @supportURL   https://github.com/MrCocoNuat/clip-studio-reader-downloader/issues
@@ -85,6 +85,17 @@ const siteSupport = {
         href: (pageNumber) => document.getElementById(`page-${pageNumber}`)?.style["background-image"].match(/url\("(.*)"\)/)?.[1], // TODO: these urls are not all loaded at start. So clicking it too fast will lose some ending pages
         classes: {
             [ELEMENT.PAGE_SPREAD]: "h-screen",
+        },
+    },
+    "bs.comicdc.jp": {
+        mode: DOWNLOAD_MODE.PAGE_BY_PAGE,
+        ids: {
+            [ELEMENT.SCREEN_CONTROLLER]: "screen_control_pad",
+            [ELEMENT.CURRENT_PAGE_COUNTER]: "menu_nombre_current",
+            [ELEMENT.TOTAL_PAGE_COUNTER]: "menu_nombre_total",
+            [ELEMENT.LOADER_SPINNER]: "screen_loading_spinner_layer",
+            [ELEMENT.MENU]: "menu_container",
+            [ELEMENT.PAGE_SPREAD]: "screen_layer"
         },
     }
 }
