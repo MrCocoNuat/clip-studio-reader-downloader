@@ -1,11 +1,16 @@
 // ==UserScript==
 // @name         Clip Studio Reader Downloader
 // @namespace    http://tampermonkey.net/
-// @version      1.10
+// @version      1.11
 // @description  Download books from the browser version of Clip Studio Reader
 // @author       mrcoconuat
 // @supportURL   https://github.com/MrCocoNuat/clip-studio-reader-downloader/issues
-// @match        *://*/*
+// @match        https://mbj-bs.pf.mobilebook.jp/*
+// @match        https://mbj-bs2.pf.mobilebook.jp/*
+// @match        https://api.distribution.mediadotech.com/*
+// @match        https://comic-viewer.iowl.jp/*
+// @match        https://comic.pixiv.net/*
+// @match        https://bs.comicdc.jp/*
 // @require      https://unpkg.com/jszip@3.10.1/dist/jszip.js
 // @require      https://unpkg.com/file-saver@2.0.5/dist/FileSaver.js
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=mobilebook.jp
