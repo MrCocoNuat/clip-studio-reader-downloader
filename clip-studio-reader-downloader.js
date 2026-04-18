@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Clip Studio Reader Downloader
 // @namespace    http://tampermonkey.net/
-// @version      1.11
+// @version      1.12
 // @description  Download books from the browser version of Clip Studio Reader
 // @author       mrcoconuat
 // @supportURL   https://github.com/MrCocoNuat/clip-studio-reader-downloader/issues
@@ -468,10 +468,24 @@ async function generatePageByPageZip() {
         if (currentPage() - lastReportedReaderPageNumber > expectedPagesInSpread) {
             // there are less pages than we thought! - the reader reports that currentPage() - lastDownloadedPageNumber passed (usually 2)
             // but we only saw expectedPages and incremented pageNumber by that much (usually 1 when this branch is entered)! decrement totalPages so we don't run over the totalPages with pageNumber
+
+            // e.g. the reader says a progress of 2 logical pages in the slider, but we downloaded just 1 png.
+            // caused if the reader counts a non-displayed blank page
             totalPages -= (currentPage() - lastReportedReaderPageNumber) - expectedPagesInSpread;
             debug(`cutting ${(currentPage() - lastReportedReaderPageNumber) - expectedPagesInSpread} from total pages, now ${totalPages}`)
         }
-        expectedPagesInSpread = 2; // reset this
+        if (currentPage() - lastReportedReaderPageNumber < expectedPagesInSpread){
+            // there are more pages than we thought! - the reader reports that currentPage() - lastDownloadedPageNumber (less than 2, usually 1)
+            // but we downloaded expectedPages (usually 2) and incremented pageNumber by that much! increment totalPages so we don't miss pages at the end of the book
+
+            // e.g. the reader says a progress of 1 logical pages in the slider, but we downloaded 2 pngs.
+            // caused if the reader doesn't count a displayed blank page.
+            totalPages += expectedPagesInSpread - (currentPage() - lastReportedReaderPageNumber) ;
+            debug(`adding ${expectedPagesInSpread - (currentPage() - lastReportedReaderPageNumber)} from total pages, now ${totalPages}`)
+        }
+        // yes, the math is the same for both cases. However, the meanings and log messages are not!
+
+        expectedPagesInSpread = 2; // reset this to the default value
 
         await sleep(100);
     }
