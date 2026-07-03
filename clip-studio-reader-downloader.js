@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Clip Studio Reader Downloader
 // @namespace    http://tampermonkey.net/
-// @version      1.12
+// @version      1.13
 // @description  Download books from the browser version of Clip Studio Reader
 // @author       mrcoconuat
 // @supportURL   https://github.com/MrCocoNuat/clip-studio-reader-downloader/issues
@@ -11,6 +11,7 @@
 // @match        https://comic-viewer.iowl.jp/*
 // @match        https://comic.pixiv.net/*
 // @match        https://bs.comicdc.jp/*
+// @match        https://bsreader.hakusensha-e.net/*
 // @require      https://unpkg.com/jszip@3.10.1/dist/jszip.js
 // @require      https://unpkg.com/file-saver@2.0.5/dist/FileSaver.js
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=mobilebook.jp
@@ -123,6 +124,18 @@ const siteSupport = {
             [ELEMENT.LOADER_SPINNER]: "screen_loading_spinner_layer",
             [ELEMENT.MENU]: "menu_container",
             [ELEMENT.PAGE_SPREAD]: "screen_layer"
+        },
+    },
+    "bsreader.hakusensha-e.net": {
+        mode: DOWNLOAD_MODE.PAGE_BY_PAGE,
+        ids: {
+            [ELEMENT.SCREEN_CONTROLLER]: "screen_control_pad",
+            [ELEMENT.CURRENT_PAGE_COUNTER]: "menu_nombre_current",
+            [ELEMENT.TOTAL_PAGE_COUNTER]: "menu_nombre_total",
+            [ELEMENT.LOADER_SPINNER]: "screen_loading_spinner_layer",
+            [ELEMENT.MENU]: "menu_container",
+            [ELEMENT.PAGE_SPREAD]: "screen_layer",
+            [ELEMENT.PAGE_SLIDER]: "menu_pagination_slider"
         },
     }
 }
