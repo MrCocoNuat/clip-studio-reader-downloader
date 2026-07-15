@@ -107,6 +107,7 @@ const siteSupport = {
             [ELEMENT.LOADER_SPINNER]: "screen_loading_spinner_layer",
             [ELEMENT.MENU]: "menu_footer",
             [ELEMENT.PAGE_SPREAD]: "screen_layer",
+            [ELEMENT.PAGE_SLIDER_HANDLE]: "menu_pagination_slider_handle",
         },
     },
     "comic.pixiv.net": {
@@ -126,7 +127,8 @@ const siteSupport = {
             [ELEMENT.TOTAL_PAGE_COUNTER]: "menu_nombre_total",
             [ELEMENT.LOADER_SPINNER]: "screen_loading_spinner_layer",
             [ELEMENT.MENU]: "menu_container",
-            [ELEMENT.PAGE_SPREAD]: "screen_layer"
+            [ELEMENT.PAGE_SPREAD]: "screen_layer",
+            [ELEMENT.PAGE_SLIDER_HANDLE]: "menu_pagination_slider_handle",
         },
     },
     "bsreader.hakusensha-e.net": {
@@ -138,7 +140,8 @@ const siteSupport = {
             [ELEMENT.LOADER_SPINNER]: "screen_loading_spinner_layer",
             [ELEMENT.MENU]: "menu_container",
             [ELEMENT.PAGE_SPREAD]: "screen_layer",
-            [ELEMENT.PAGE_SLIDER]: "menu_pagination_slider"
+            [ELEMENT.PAGE_SLIDER]: "menu_pagination_slider",
+            [ELEMENT.PAGE_SLIDER_HANDLE]: "menu_pagination_slider_handle",
         },
     }
 }
@@ -429,7 +432,15 @@ async function flipToFirstPage(isLeftToRight = false) {
 // NOTE: test books with free previews:
 // (ltr comic) https://honto.jp/ebook/pd_31226757.html
 // (ltr novel) https://honto.jp/ebook/pd_33143031.html
-async function checkIsLeftToRight() {
+// https://nadeshiko-shoten.jp/products/detail.php?product_id=349986
+// https://comic.iowl.jp/titles/236811/volumes
+// https://www.hakusensha-e.net/store/product/59273333jikkend00111
+async function isBookLeftToRight() {
+    if (!siteSupport[window.location.hostname].ids?.[ELEMENT.PAGE_SLIDER_HANDLE]) {
+        debug("left to right check not supported for this site, assuming right to left");
+        return false;
+    }
+
     const displayTotal = totalPageCount();
     // get progress in the range [0, 1]
     const offset = displayTotal == Infinity ? 0 : -1; // needed so that page 1 --> 0% progress
@@ -617,7 +628,7 @@ async function downloadBookAsZip() {
         switch (downloadMode()) {
             case DOWNLOAD_MODE.PAGE_BY_PAGE:
                 await openMenu();
-                const isLeftToRight = await checkIsLeftToRight();
+                const isLeftToRight = await isBookLeftToRight();
                 await flipToFirstPage(isLeftToRight);
 
                 jsZip = await generatePageByPageZip(isLeftToRight);

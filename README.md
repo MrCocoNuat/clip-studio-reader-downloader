@@ -31,6 +31,7 @@ Each site's integrated Clip Studio Reader is a little different, so explicit sup
 |https://comic-viewer.iowl.jp/|[ComicFesta](https://comic.iowl.jp/)|
 |https://comic.pixiv.net/viewer/| [Pixiv Comics](https://comic.pixiv.net/)|
 |https://bs.comicdc.jp/|[Nadeshiko Shoten](https://nadeshiko-shoten.jp/)|
+|https://bsreader.hakusensha-e.net|[Hakusensha e-net](https://www.hakusensha-e.net/)|
 
 
 If you want another site to be supported, feel free to open an issue here with the bookstore, reader site (where you actually read the book), and any other helpful details you can think of. Of course, if you have the techinical inclination, I am accepting PRs for site support too.
