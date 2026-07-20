@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Clip Studio Reader Downloader
 // @namespace    http://tampermonkey.net/
-// @version      1.13
+// @version      1.14
 // @description  Download books from the browser version of Clip Studio Reader
 // @author       mrcoconuat
 // @supportURL   https://github.com/MrCocoNuat/clip-studio-reader-downloader/issues
@@ -38,7 +38,8 @@ const ELEMENT = {
     MENU: 4, // used to detect if the menu must be raised since it contains the page scroller
     PAGE_SPREAD: 5, // contains the actual pages, and is checked to see if the reader as a whole has loaded
     PAGE_SLIDER: 7, // duh
-    COLOPHON: 8 // used to detect if the colophon page is being shown, usually because the reader has reached the end of the book
+    COLOPHON: 8, // used to detect if the colophon page is being shown, usually because the reader has reached the end of the book
+    PAGE_SLIDER_HANDLE: 9, // used for checking reading direction (left-to-right, or right-to-left)
 }
 
 const DOWNLOAD_MODE = {
@@ -59,7 +60,8 @@ const siteSupport = {
             [ELEMENT.LOADER_SPINNER]: "loading_spinner_layer",
             [ELEMENT.MENU]: "menu_layer",
             [ELEMENT.PAGE_SPREAD]: "spread_a",
-            [ELEMENT.PAGE_SLIDER]: "paging_slider"
+            [ELEMENT.PAGE_SLIDER]: "paging_slider",
+            [ELEMENT.PAGE_SLIDER_HANDLE]: "paging_slider_handle"
         },
         // sometimes the necessary element does not have an id, which sucks
         classes: {}
@@ -75,6 +77,7 @@ const siteSupport = {
             },
             // [ELEMENT.PAGE_SLIDER]: "menu_pagination_slider", // not working right, make the user drag it manually
             [ELEMENT.COLOPHON]: "reading_panel_colophon",
+            [ELEMENT.PAGE_SLIDER_HANDLE]: "menu_pagination_slider_handle"
         },
         classes: {
             [ELEMENT.SCREEN_CONTROLLER]: "viewer-overlay-container", 
@@ -104,6 +107,7 @@ const siteSupport = {
             [ELEMENT.LOADER_SPINNER]: "screen_loading_spinner_layer",
             [ELEMENT.MENU]: "menu_footer",
             [ELEMENT.PAGE_SPREAD]: "screen_layer",
+            [ELEMENT.PAGE_SLIDER_HANDLE]: "menu_pagination_slider_handle",
         },
     },
     "comic.pixiv.net": {
@@ -123,7 +127,8 @@ const siteSupport = {
             [ELEMENT.TOTAL_PAGE_COUNTER]: "menu_nombre_total",
             [ELEMENT.LOADER_SPINNER]: "screen_loading_spinner_layer",
             [ELEMENT.MENU]: "menu_container",
-            [ELEMENT.PAGE_SPREAD]: "screen_layer"
+            [ELEMENT.PAGE_SPREAD]: "screen_layer",
+            [ELEMENT.PAGE_SLIDER_HANDLE]: "menu_pagination_slider_handle",
         },
     },
     "bsreader.hakusensha-e.net": {
@@ -135,7 +140,8 @@ const siteSupport = {
             [ELEMENT.LOADER_SPINNER]: "screen_loading_spinner_layer",
             [ELEMENT.MENU]: "menu_container",
             [ELEMENT.PAGE_SPREAD]: "screen_layer",
-            [ELEMENT.PAGE_SLIDER]: "menu_pagination_slider"
+            [ELEMENT.PAGE_SLIDER]: "menu_pagination_slider",
+            [ELEMENT.PAGE_SLIDER_HANDLE]: "menu_pagination_slider_handle",
         },
     }
 }
@@ -167,7 +173,7 @@ const getCSRElement = (elementEnum) => {
                 }
                 return currentElement;
             }
-        } 
+        }
         // class search?
         else if (typeof siteSupport[window.location.hostname].classes?.[elementEnum] === "string") {
             console.debug("Searching by class:", siteSupport[window.location.hostname].classes?.[elementEnum]);
@@ -321,9 +327,10 @@ function dataUrlToData(base64Url) {
 //------------------------------
 
 // positive flips forward (increase page number), negative flips backwards (decrease page number), 0 is to open menu
-function flipPage(direction) {
+function flipPage(direction, isLeftToRight = false) {
     const screen = getCSRElement(ELEMENT.SCREEN_CONTROLLER);
     // click on the left, middle, or right of the screen depending on arg
+    direction = isLeftToRight ? -direction : direction;
     const x = (-0.99*direction + 1) * viewportX() / 2;
     screen.dispatchEvent(new PointerEvent("pointerdown", {buttons: 1, clientX: x, clientY: 100, bubbles: true}));
     screen.dispatchEvent(new PointerEvent("mousedown", {buttons: 1, clientX: x, clientY: 100, bubbles: true}));
@@ -359,11 +366,26 @@ function isMenuOpen() {
     return getCSRElement(ELEMENT.MENU).style.display !== "none" && getCSRElement(ELEMENT.MENU).classList.contains("onstage");
 }
 
+async function openMenu() {
+    if (!isMenuOpen()) {
+        info("opening menu to load scroller");
+        flipPage(0); // open menu
+        await sleep(200);
+
+        // can't read values as fast, because it animates for longer (?)
+        if (options().pageCounterPercentage) {
+            while (!isMenuOpen()) {
+                await sleep(200);
+            }
+        }
+    }
+}
+
 function isColophonOpen() {
     return getCSRElement(ELEMENT.COLOPHON).style.display !== "none" && getCSRElement(ELEMENT.COLOPHON).classList.contains("onstage");
 }
 
-async function flipToFirstPage() {
+async function flipToFirstPage(isLeftToRight = false) {
     const slider = getCSRElement(ELEMENT.PAGE_SLIDER);
     if (slider === undefined && currentPage() > 1) {
         throw Error("This reader's automatic page slider is not supported, please move to page 1 manually and click the download button again");
@@ -375,45 +397,72 @@ async function flipToFirstPage() {
 
     info(`flipping to first page`);
 
-    if (!isMenuOpen()) {
-        debug("opening menu to load scroller");
-        flipPage(0); // open menu
-        await sleep(200);
-    }
+    openMenu();
 
-    // click the very right of the page slider - page 1
-    slider.dispatchEvent(new PointerEvent("pointerdown", {
-        buttons: 1,
-        clientX: viewportX() - 25,
-        clientY: viewportY() - 70,
-        bubbles: true
-    }));
-    slider.dispatchEvent(new PointerEvent("mousedown", {
-        buttons: 1,
-        clientX: viewportX() - 25,
-        clientY: viewportY() - 70,
-        bubbles: true
-    }));
-    slider.dispatchEvent(new PointerEvent("pointerup", {
-        buttons: 0,
-        clientX: viewportX() - 25,
-        clientY: viewportY() - 70,
-        bubbles: true
-    }));
-        slider.dispatchEvent(new PointerEvent("mouseup", {
-        buttons: 0,
-        clientX: viewportX() - 25,
-        clientY: viewportY() - 70,
-        bubbles: true
-    }));
-        slider.dispatchEvent(new PointerEvent("click", {
-        buttons: 0,
-        clientX: viewportX() - 25,
-        clientY: viewportY() - 70,
-        bubbles: true
-    }));
+    // click the very left/right of the page slider - page 1
+    var posX = viewportX() - 25;
+    var posY = viewportY() - 70;
+    if (isLeftToRight) {
+        posX = +25
+    }
+    const buttons = [
+        {
+            buttons: 0,
+            clientX: posX,
+            clientY: posY,
+            bubbles: true
+        },
+        {
+            buttons: 1,
+            clientX: posX,
+            clientY: posY,
+            bubbles: true
+        }
+    ];
+    slider.dispatchEvent(new PointerEvent("pointerdown", buttons[1]));
+    slider.dispatchEvent(new PointerEvent("mousedown", buttons[1]));
+    slider.dispatchEvent(new PointerEvent("pointerup", buttons[0]));
+    slider.dispatchEvent(new PointerEvent("mouseup", buttons[0]));
+    slider.dispatchEvent(new PointerEvent("click", buttons[0]));
     await sleep(100);
     await waitForPageLoad();
+}
+
+// compare the position of the page progress bar with page count to determine if the book is left to right
+// NOTE: test books with free previews:
+// (ltr comic) https://honto.jp/ebook/pd_31226757.html
+// (ltr novel) https://honto.jp/ebook/pd_33143031.html
+// https://nadeshiko-shoten.jp/products/detail.php?product_id=349986
+// https://comic.iowl.jp/titles/236811/volumes
+// https://www.hakusensha-e.net/store/product/59273333jikkend00111
+async function isBookLeftToRight() {
+    if (!siteSupport[window.location.hostname].ids?.[ELEMENT.PAGE_SLIDER_HANDLE]) {
+        debug("left to right check not supported for this site, assuming right to left");
+        return false;
+    }
+
+    const displayTotal = totalPageCount();
+    // get progress in the range [0, 1]
+    const offset = displayTotal == Infinity ? 0 : -1; // needed so that page 1 --> 0% progress
+    const total = displayTotal == Infinity ? 100 : displayTotal - 1;
+    var progressFromPageCount = (currentPage() + offset) / total;
+
+    // can't determine left-to-right if we're exactly half way, so flip pages until we are not
+    if (progressFromPageCount == 0.5) {
+        debug("exactly half way through book, flipping page to determine left to right");
+        flipPage(-1);
+        await waitForPageLoad();
+        progressFromPageCount = (currentPage() + offset) / total;
+    }
+
+    const styleLeft = getCSRElement(ELEMENT.PAGE_SLIDER_HANDLE).style["left"];
+    console.assert(styleLeft.endsWith("%"));
+    const progressFromBar = parseInt(styleLeft.substring(0, styleLeft.length-1)) / 100;
+
+    debug(`progressFromBar = ${progressFromBar}`);
+    debug(`progressFromPageCount = ${progressFromPageCount}`);
+
+    return Math.sign(0.5 - progressFromBar) == Math.sign(0.5 - progressFromPageCount);
 }
 
 
@@ -422,7 +471,7 @@ async function flipToFirstPage() {
 
 const MAX_ZERO_PADS = 4; // 9999 pages should be enough for anyone
 
-async function generatePageByPageZip() {
+async function generatePageByPageZip(isLeftToRight = false) {
     const jsZip = new JSZip();
 
     let totalPages = totalPageCount();
@@ -448,9 +497,12 @@ async function generatePageByPageZip() {
     }
 
     while (true) {
-        const element_spread = getCSRElement(ELEMENT.PAGE_SPREAD);
+        var elementSpread = [...getCSRElement(ELEMENT.PAGE_SPREAD).children];
         // Right to left means reverse the array
-        for (const canvas of [...element_spread.children].toReversed()) {
+        if (!isLeftToRight) {
+            elementSpread = elementSpread.toReversed();
+        }
+        for (const canvas of elementSpread) {
             if (canvas.style.visibility === "hidden" || canvas.style.display === "none" || canvas.style.position === "absolute") {
                 debug(`page before ${pageNumber} is a hidden or junk page, skipping it`);
                 //possibly the unseen half of a 1 page spread on 2 canvases. Need to check after this canvas spread is completed and the page is flipped, what to do
@@ -473,7 +525,7 @@ async function generatePageByPageZip() {
         // Need to check after this canvas spread is completed and the page is flipped, what to do
         lastReportedReaderPageNumber = currentPage();
         await sleep(100);
-        flipPage(1);
+        flipPage(1, isLeftToRight);
         await sleep(100);
         await waitForPageLoad();
 
@@ -488,6 +540,10 @@ async function generatePageByPageZip() {
             debug(`cutting ${(currentPage() - lastReportedReaderPageNumber) - expectedPagesInSpread} from total pages, now ${totalPages}`)
         }
         if (currentPage() - lastReportedReaderPageNumber < expectedPagesInSpread){
+            if (pageNumber >= totalPages) {
+                debug("we're at the end of the book, so can just ignore the extra/hidden page");
+                break;
+            }
             // there are more pages than we thought! - the reader reports that currentPage() - lastDownloadedPageNumber (less than 2, usually 1)
             // but we downloaded expectedPages (usually 2) and incremented pageNumber by that much! increment totalPages so we don't miss pages at the end of the book
 
@@ -571,14 +627,11 @@ async function downloadBookAsZip() {
     try {
         switch (downloadMode()) {
             case DOWNLOAD_MODE.PAGE_BY_PAGE:
-                if (!isMenuOpen()) {
-                    info("opening menu to load scroller");
-                    flipPage(0); // open menu
-                    await sleep(200);
-                }
-                await flipToFirstPage();
+                await openMenu();
+                const isLeftToRight = await isBookLeftToRight();
+                await flipToFirstPage(isLeftToRight);
 
-                jsZip = await generatePageByPageZip();
+                jsZip = await generatePageByPageZip(isLeftToRight);
                 break;
             case DOWNLOAD_MODE.DIRECT:
                 jsZip = await generateDirectZip();
