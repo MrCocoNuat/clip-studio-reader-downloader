@@ -27,6 +27,7 @@ Each site's integrated Clip Studio Reader is a little different, so explicit sup
 |-|-|
 |https://api.distribution.mediadotech.com/|[Pixiv Comics](https://comic.pixiv.net/)|
 |https://mbj-bs.pf.mobilebook.jp/| [honto](https://honto.jp/)  (manga)|
+|https://bs.web-viewer.honto.jp/| [honto](https://honto.jp/)  (manga)|
 |https://mbj-bs2.pf.mobilebook.jp/ \**poor support*| [honto](https://honto.jp/) (novels)|
 |https://comic-viewer.iowl.jp/|[ComicFesta](https://comic.iowl.jp/)|
 |https://comic.pixiv.net/viewer/| [Pixiv Comics](https://comic.pixiv.net/)|
