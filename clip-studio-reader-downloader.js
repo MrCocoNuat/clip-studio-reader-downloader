@@ -183,7 +183,7 @@ function setupCanvasHooks() {
                 const singlePagePos = (styleWidth * 0.5) - 0.5*dWidth;
                 // if the page is drawn close to that position, assume it's the left page
                 const isLeftPage = Math.abs(dx - leftPagePos) <= 1.0;
-                const isSinglePage = Math.abs(dx - singlePagePos) <= 1.0
+                const isSinglePage = Math.abs(dx - singlePagePos) <= 1.0;
 
                 const pageNumber = isLeftPage ? 1 : 0;
                 currentCanvasCapture.isSinglePage = isSinglePage;
@@ -569,26 +569,26 @@ async function generatePageByPageZip(isLeftToRight = false) {
         if (useCanvasHooks()) {
             // Use the captured image data from the canvas hook functions,
             // instead of reading it from the on screen canvas
-            let pages = null;
+            let canvasPages = null;
             if (currentCanvasCapture.isSinglePage) {
                 info(`saving single page ${pageNumber} from hooked canvas capture`);
-                expectedPagesInSpread--
-                pages = [0];
+                expectedPagesInSpread--;
+                canvasPages = [0];
             } else {
                 info(`saving double page ${pageNumber} from hooked canvas capture`);
-                pages = isLeftToRight ? [1, 0] : [0, 1];
+                canvasPages = isLeftToRight ? [1, 0] : [0, 1];
             }
 
-            for (const pageSide of pages) {
-                const page = currentCanvasCapture.pages[pageSide];
+            for (const pageSide of canvasPages) {
+                const canvasPage = currentCanvasCapture.pages[pageSide];
                 if ((pageNumber == 1 || pageNumber >= totalPages)
-                    && (page.width == 1 && page.height == 1))
+                    && (canvasPage.width == 1 && canvasPage.height == 1))
                 {
                     info(`skipping 1x1 pixel first/last page`);
                     expectedPagesInSpread--;
                     continue;
                 }
-                jsZip.file(getPageFilename(pageNumber, zeroPads), page.image, {base64: true});
+                jsZip.file(getPageFilename(pageNumber, zeroPads), canvasPage.image, {base64: true});
                 pageNumber++;
             }
         } else {
