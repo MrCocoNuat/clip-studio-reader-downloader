@@ -32,6 +32,7 @@ Each site's integrated Clip Studio Reader is a little different, so explicit sup
 |https://comic-viewer.iowl.jp/|[ComicFesta](https://comic.iowl.jp/)|
 |https://comic.pixiv.net/viewer/| [Pixiv Comics](https://comic.pixiv.net/)|
 |https://bs.comicdc.jp/|[Nadeshiko Shoten](https://nadeshiko-shoten.jp/)|
+|https://bs-comicdc.bookagency.jp/|[Nadeshiko Shoten](https://nadeshiko-shoten.jp/)|
 |https://bsreader.hakusensha-e.net|[Hakusensha e-net](https://www.hakusensha-e.net/)|
 
 

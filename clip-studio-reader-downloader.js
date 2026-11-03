@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Clip Studio Reader Downloader
 // @namespace    http://tampermonkey.net/
-// @version      1.15
+// @version      1.16
 // @description  Download books from the browser version of Clip Studio Reader
 // @author       mrcoconuat
 // @supportURL   https://github.com/MrCocoNuat/clip-studio-reader-downloader/issues
@@ -11,6 +11,7 @@
 // @match        https://comic-viewer.iowl.jp/*
 // @match        https://comic.pixiv.net/*
 // @match        https://bs.comicdc.jp/*
+// @match        https://bs-comicdc.bookagency.jp/*
 // @match        https://bs.web-viewer.honto.jp/*
 // @match        https://bsreader.hakusensha-e.net/*
 // @require      https://unpkg.com/jszip@3.10.1/dist/jszip.js
@@ -48,11 +49,40 @@ const DOWNLOAD_MODE = {
     DIRECT: 1 // links to each page are accessible right from the start. Usually these are free samples or outright free books
 }
 
+const nativeCanvasRenderingContext2D = {
+    "drawImage": CanvasRenderingContext2D.prototype.drawImage,
+};
+
+// Global used to track the current rended canvas pages
+let currentCanvasCapture = {
+    "isSinglePage": false,
+    "pages": [null, null],
+};
+
+
 // Data distribution for site-specific integrations:
 //------------------------------
 
+// common variant of CSR used by many sites
+const variant1 = {
+    mode: DOWNLOAD_MODE.PAGE_BY_PAGE,
+    ids: {
+        [ELEMENT.SCREEN_CONTROLLER]: "screen_control_pad",
+        [ELEMENT.CURRENT_PAGE_COUNTER]: "menu_nombre_current",
+        [ELEMENT.TOTAL_PAGE_COUNTER]: "menu_nombre_total",
+        [ELEMENT.LOADER_SPINNER]: "screen_loading_spinner_layer",
+        [ELEMENT.MENU]: "menu_container",
+        [ELEMENT.PAGE_SPREAD]: "screen_layer",
+        [ELEMENT.PAGE_SLIDER]: "menu_pagination_slider",
+        [ELEMENT.PAGE_SLIDER_HANDLE]: "menu_pagination_slider_handle"
+    },
+    options: {
+        useCanvasHooks: true,
+    }
+};
+
 const siteSupport = {
-    "mbj-bs.pf.mobilebook.jp": {
+    "mbj-bs.pf.mobilebook.jp": { // honto manga (deprecated)
         mode: DOWNLOAD_MODE.PAGE_BY_PAGE,
         ids: {
             [ELEMENT.SCREEN_CONTROLLER]: "screen_surface",
@@ -67,7 +97,7 @@ const siteSupport = {
         // sometimes the necessary element does not have an id, which sucks
         classes: {}
     },
-    "mbj-bs2.pf.mobilebook.jp": {
+    "mbj-bs2.pf.mobilebook.jp": { // honto novel (deprecated)
         mode: DOWNLOAD_MODE.PAGE_BY_PAGE,
         ids: {
             [ELEMENT.CURRENT_PAGE_COUNTER]: "menu_footer_nombre_progress",
@@ -81,14 +111,14 @@ const siteSupport = {
             [ELEMENT.PAGE_SLIDER_HANDLE]: "menu_pagination_slider_handle"
         },
         classes: {
-            [ELEMENT.SCREEN_CONTROLLER]: "viewer-overlay-container", 
+            [ELEMENT.SCREEN_CONTROLLER]: "viewer-overlay-container",
         },
         options:{
             poorSupport: true, // this site has some issues
             pageCounterPercentage: true // this site uses a percentage instead of page numbers, which complicates progress detection
         }
     },
-    "api.distribution.mediadotech.com": {
+    "api.distribution.mediadotech.com": { // Pixiv Comics
         mode: DOWNLOAD_MODE.PAGE_BY_PAGE,
         ids: {
             [ELEMENT.SCREEN_CONTROLLER]: "screen_control_pad",
@@ -99,19 +129,7 @@ const siteSupport = {
             [ELEMENT.PAGE_SPREAD]: "screen_layer"
         },
     },
-    "comic-viewer.iowl.jp": {
-        mode: DOWNLOAD_MODE.PAGE_BY_PAGE,
-        ids: {
-            [ELEMENT.SCREEN_CONTROLLER]: "screen_control_pad",
-            [ELEMENT.CURRENT_PAGE_COUNTER]: "menu_nombre_current",
-            [ELEMENT.TOTAL_PAGE_COUNTER]: "menu_nombre_total",
-            [ELEMENT.LOADER_SPINNER]: "screen_loading_spinner_layer",
-            [ELEMENT.MENU]: "menu_footer",
-            [ELEMENT.PAGE_SPREAD]: "screen_layer",
-            [ELEMENT.PAGE_SLIDER_HANDLE]: "menu_pagination_slider_handle",
-        },
-    },
-    "comic.pixiv.net": {
+    "comic.pixiv.net": { // Pixiv Comics
         // readers can have extra conditions tacked on
         condition: () => document.location.pathname.substring(0, 7) === "/viewer",
         mode: DOWNLOAD_MODE.DIRECT,
@@ -120,45 +138,69 @@ const siteSupport = {
             [ELEMENT.PAGE_SPREAD]: "h-screen",
         },
     },
-    "bs.comicdc.jp": {
-        mode: DOWNLOAD_MODE.PAGE_BY_PAGE,
-        ids: {
-            [ELEMENT.SCREEN_CONTROLLER]: "screen_control_pad",
-            [ELEMENT.CURRENT_PAGE_COUNTER]: "menu_nombre_current",
-            [ELEMENT.TOTAL_PAGE_COUNTER]: "menu_nombre_total",
-            [ELEMENT.LOADER_SPINNER]: "screen_loading_spinner_layer",
-            [ELEMENT.MENU]: "menu_container",
-            [ELEMENT.PAGE_SPREAD]: "screen_layer",
-            [ELEMENT.PAGE_SLIDER_HANDLE]: "menu_pagination_slider_handle",
-        },
-    },
-    "bs.web-viewer.honto.jp": {
-        mode: DOWNLOAD_MODE.PAGE_BY_PAGE,
-        ids: {
-            [ELEMENT.SCREEN_CONTROLLER]: "screen_control_pad",
-            [ELEMENT.CURRENT_PAGE_COUNTER]: "menu_nombre_current",
-            [ELEMENT.TOTAL_PAGE_COUNTER]: "menu_nombre_total",
-            [ELEMENT.LOADER_SPINNER]: "screen_loading_spinner_layer",
-            [ELEMENT.MENU]: "menu_container",
-            [ELEMENT.PAGE_SPREAD]: "screen_layer",
-            [ELEMENT.PAGE_SLIDER]: "menu_pagination_slider",
-            [ELEMENT.PAGE_SLIDER_HANDLE]: "menu_pagination_slider_handle"
-        },
-    },
-    "bsreader.hakusensha-e.net": {
-        mode: DOWNLOAD_MODE.PAGE_BY_PAGE,
-        ids: {
-            [ELEMENT.SCREEN_CONTROLLER]: "screen_control_pad",
-            [ELEMENT.CURRENT_PAGE_COUNTER]: "menu_nombre_current",
-            [ELEMENT.TOTAL_PAGE_COUNTER]: "menu_nombre_total",
-            [ELEMENT.LOADER_SPINNER]: "screen_loading_spinner_layer",
-            [ELEMENT.MENU]: "menu_container",
-            [ELEMENT.PAGE_SPREAD]: "screen_layer",
-            [ELEMENT.PAGE_SLIDER]: "menu_pagination_slider",
-            [ELEMENT.PAGE_SLIDER_HANDLE]: "menu_pagination_slider_handle",
-        },
+    "comic-viewer.iowl.jp": variant1, // ComicFesta
+    "bs.comicdc.jp": variant1, // Nadeshiko Shoten (deprecated?)
+    "bs-comicdc.bookagency.jp": variant1, // Nadeshiko Shoten
+    "bs.web-viewer.honto.jp": variant1, // honto manga
+    "bsreader.hakusensha-e.net": variant1, // Hakusensha e-net
+}
+
+
+function setupCanvasHooks() {
+    info("Using canvas hook functions");
+
+    // We hook into the drawImage of the canvas, so we can grab the unscaled image
+    // then we pass onto the native drawImage function
+    CanvasRenderingContext2D.prototype.drawImage = function (image, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight) {
+        if (sWidth == null
+            && sHeight == null
+            && dx == null
+            && dy == null
+            && dWidth == null
+            && dHeight == null)
+        {
+            // don't care about this case
+            const dx = sx;
+            const dy = sy;
+            return nativeCanvasRenderingContext2D.drawImage.call(this, image, dx, dy);
+        } else if (dx == null
+                   && dy == null
+                   && dWidth == null
+                   && dHeight == null)
+        {
+            const dx = sx;
+            const dy = sy;
+            const dWidth = sWidth;
+            const dHeight = sHeight;
+
+            if (this.canvas.parentNode?.id == "screen_layer" && image.nodeName == "CANVAS") {
+                // we're drawing an image to a screen, based on where it's drawn, we can figure
+                // out if it's a left or right page of a double page spread, or if it's a single page
+                const styleWidth = Number(this.canvas.style.width.endsWith("px") ? this.canvas.style.width.slice(0,-2) : this.canvas.width);
+                // estimated position of the left page in a double page spread
+                const leftPagePos = (styleWidth * 0.5) - dWidth;
+                // if rendering a single page, will be rendered at this pos
+                const singlePagePos = (styleWidth * 0.5) - 0.5*dWidth;
+                // if the page is drawn close to that position, assume it's the left page
+                const isLeftPage = Math.abs(dx - leftPagePos) <= 1.0;
+                const isSinglePage = Math.abs(dx - singlePagePos) <= 1.0;
+
+                const pageNumber = isLeftPage ? 1 : 0;
+                currentCanvasCapture.isSinglePage = isSinglePage;
+                currentCanvasCapture.pages[pageNumber] = {
+                    image: canvasToBase64(image),
+                    width: image.width,
+                    height: image.height,
+                };
+            }
+            return nativeCanvasRenderingContext2D.drawImage.call(this, image, dx, dy, dWidth, dHeight);
+        } else {
+            // don't care about this case
+            return nativeCanvasRenderingContext2D.drawImage.call(this, image, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);
+        }
     }
 }
+
 
 // try by ID if given, then by class
 const getCSRElement = (elementEnum) => {
@@ -167,7 +209,7 @@ const getCSRElement = (elementEnum) => {
         if (typeof siteSupport[window.location.hostname].ids?.[elementEnum] === "string") {
             console.debug("Searching by id:", siteSupport[window.location.hostname].ids?.[elementEnum]);
             return document.getElementById(siteSupport[window.location.hostname].ids?.[elementEnum]);
-        }  
+        }
         // id + path search?
         else if (typeof siteSupport[window.location.hostname].ids?.[elementEnum] === "object") {
             console.debug("Searching by id + path:", siteSupport[window.location.hostname].ids?.[elementEnum]);
@@ -225,6 +267,10 @@ function downloadMode() {
 
 function options() {
     return siteSupport[document.location.hostname].options ?? {};
+}
+
+function useCanvasHooks() {
+    return options()?.useCanvasHooks;
 }
 
 
@@ -336,6 +382,13 @@ function dataUrlToData(base64Url) {
     return base64Url.substr(base64Url.indexOf(',') + 1);
 }
 
+function canvasToBase64(canvas) {
+    return dataUrlToData(canvas.toDataURL());
+}
+
+function getPageFilename (pageNumber, padLength) {
+    return `${pageNumber.toString().padStart(padLength, "0")}.png`;
+}
 
 // Reader Utility
 //------------------------------
@@ -424,13 +477,15 @@ async function flipToFirstPage(isLeftToRight = false) {
             buttons: 0,
             clientX: posX,
             clientY: posY,
-            bubbles: true
+            bubbles: true,
+            isPrimary:true,
         },
         {
             buttons: 1,
             clientX: posX,
             clientY: posY,
-            bubbles: true
+            bubbles: true,
+            isPrimary:true,
         }
     ];
     slider.dispatchEvent(new PointerEvent("pointerdown", buttons[1]));
@@ -511,22 +566,50 @@ async function generatePageByPageZip(isLeftToRight = false) {
     }
 
     while (true) {
-        var elementSpread = [...getCSRElement(ELEMENT.PAGE_SPREAD).children];
-        // Right to left means reverse the array
-        if (!isLeftToRight) {
-            elementSpread = elementSpread.toReversed();
-        }
-        for (const canvas of elementSpread) {
-            if (canvas.style.visibility === "hidden" || canvas.style.display === "none" || canvas.style.position === "absolute") {
-                debug(`page before ${pageNumber} is a hidden or junk page, skipping it`);
-                //possibly the unseen half of a 1 page spread on 2 canvases. Need to check after this canvas spread is completed and the page is flipped, what to do
+        if (useCanvasHooks()) {
+            // Use the captured image data from the canvas hook functions,
+            // instead of reading it from the on screen canvas
+            let canvasPages = null;
+            if (currentCanvasCapture.isSinglePage) {
+                info(`saving single page ${pageNumber} from hooked canvas capture`);
                 expectedPagesInSpread--;
-                continue;
+                canvasPages = [0];
+            } else {
+                info(`saving double page ${pageNumber} from hooked canvas capture`);
+                canvasPages = isLeftToRight ? [1, 0] : [0, 1];
             }
 
-            info(`saving page ${pageNumber}`);
-            jsZip.file(`${pageNumber.toString().padStart(zeroPads, "0")}.png`, dataUrlToData(canvas.toDataURL()), {base64: true});
-            pageNumber++;
+            for (const pageSide of canvasPages) {
+                const canvasPage = currentCanvasCapture.pages[pageSide];
+                if ((pageNumber == 1 || pageNumber >= totalPages)
+                    && (canvasPage.width == 1 && canvasPage.height == 1))
+                {
+                    info(`skipping 1x1 pixel first/last page`);
+                    expectedPagesInSpread--;
+                    continue;
+                }
+                jsZip.file(getPageFilename(pageNumber, zeroPads), canvasPage.image, {base64: true});
+                pageNumber++;
+            }
+        } else {
+            var elementSpread = [...getCSRElement(ELEMENT.PAGE_SPREAD).children];
+            // Right to left means reverse the array
+            if (!isLeftToRight) {
+                elementSpread = elementSpread.toReversed();
+            }
+
+            for (const canvas of elementSpread) {
+                if (canvas.style.visibility === "hidden" || canvas.style.display === "none" || canvas.style.position === "absolute") {
+                    debug(`page before ${pageNumber} is a hidden or junk page, skipping it`);
+                    //possibly the unseen half of a 1 page spread on 2 canvases. Need to check after this canvas spread is completed and the page is flipped, what to do
+                    expectedPagesInSpread--;
+                    continue;
+                }
+
+                info(`saving page ${pageNumber}`);
+                jsZip.file(getPageFilename(pageNumber, zeroPads), canvasToBase64(canvas), {base64: true});
+                pageNumber++;
+            }
         }
 
         if (totalPages === Infinity && isColophonOpen()) {
@@ -585,7 +668,7 @@ async function generateDirectZip() {
     log("==== downloading pages: ====");
 
     for (const [i, href] of pageHrefs.entries()) {
-        jsZip.file(`${i.toString().padStart(zeroPads, "0")}.png`, await (await fetch(href)).blob());
+        jsZip.file(getPageFilename(i, zeroPads), await (await fetch(href)).blob());
     }
 
     return jsZip;
@@ -728,6 +811,9 @@ function init() {
     if (siteIsSupported()) {
         if (options().poorSupport){
             addWarningMessage("the current reader site is poorly supported, some features may not work reliably. Feel free to open an issue on GitHub if you encounter any problems outside of the known warnings");
+        }
+        if (useCanvasHooks()) {
+            setupCanvasHooks();
         }
         (new MutationObserver((changes, observer) => checkPageLoad(observer))).observe(document, {
             childList: true,
